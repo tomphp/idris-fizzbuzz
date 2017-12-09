@@ -1,3 +1,27 @@
+data DividesBy : (n : Nat) -> (d : Nat) -> Type where
+  Zero : (d : Nat) -> DividesBy 0 d
+  MultipleOf : (DividesBy n d) -> DividesBy (n + d) d
+
+mkDividesBy : (multiplier : Nat) -> (divisor : Nat) -> DividesBy (multiplier * divisor) divisor
+mkDividesBy Z divisor = Zero divisor
+mkDividesBy (S newMultiplier) divisor = rewrite plusCommutative divisor (newMultiplier * divisor) in
+                                               MultipleOf (mkDividesBy newMultiplier divisor)
+
+convertType : (value : DividesBy (multiplier * divisor) divisor) -> (n : Nat) -> (multiplier * divisor = n) -> DividesBy n divisor
+convertType value (multiplier * divisor) Refl = value
+
+isDivisibleByNZ : (n : Nat) -> (d : Nat) -> (nz : Not (d = 0)) -> Maybe (DividesBy n d)
+isDivisibleByNZ n Z nz = void (nz Refl)
+isDivisibleByNZ n d nz = let multiplier = divNatNZ n d nz in
+                             (case decEq (multiplier * d) n of
+                                   (Yes prf) => Just (convertType (mkDividesBy multiplier d) n prf)
+                                   (No contra) => Nothing)
+
+isDivisibleBy : (n : Nat) -> (d : Nat) -> Maybe (DividesBy n d)
+isDivisibleBy n d = case decEq d Z of
+                         (Yes prf) => Nothing
+                         (No contra) => isDivisibleByNZ n d contra
+
 data Fizzy : (k : Nat) -> Type where
   TheFizz : (k : Nat) -> (prf : 3 = k) -> Fizzy k
 
