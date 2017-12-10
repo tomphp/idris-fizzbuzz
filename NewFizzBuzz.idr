@@ -3,22 +3,25 @@ data IsDivisibleBy : (dividend : Nat) -> (divisor : Nat) -> Type where
   MultipleOf : (IsDivisibleBy dividend divisor) -> IsDivisibleBy (dividend + divisor) divisor
 
 mkDividesBy : (multiplier : Nat) -> (divisor : Nat) -> IsDivisibleBy (multiplier * divisor) divisor
-mkDividesBy Z divisor = Zero divisor
+mkDividesBy Z                 divisor = Zero divisor
 mkDividesBy (S newMultiplier) divisor = rewrite plusCommutative divisor (newMultiplier * divisor) in
                                                MultipleOf (mkDividesBy newMultiplier divisor)
+NotZero : Nat -> Type
+NotZero k = Not (k = 0)
 
-multiplyToValue : (value : IsDivisibleBy (multiplier * divisor) divisor) -> (dividend : Nat) -> (multiplier * divisor = dividend) -> IsDivisibleBy dividend divisor
-multiplyToValue value (multiplier * divisor) Refl = value
+isZero : (k : Nat) -> Dec (k = Z)
+isZero k = decEq k Z
 
-isDivisibleByNZ : (dividend : Nat) -> (divisor : Nat) -> (nz_prf : Not (divisor = 0)) -> Maybe (IsDivisibleBy dividend divisor)
-isDivisibleByNZ dividend Z nz_prf = void (nz_prf Refl)
-isDivisibleByNZ dividend divisor nz_prf = let multiplier = divNatNZ dividend divisor nz_prf in
-                             (case decEq (multiplier * divisor) dividend of
-                                   (Yes prf) => Just (multiplyToValue (mkDividesBy multiplier divisor) dividend prf)
-                                   (No contra) => Nothing)
+isDivisibleByNZ : (dividend : Nat) -> (divisor : Nat) -> (nz_prf : NotZero divisor) -> Maybe (IsDivisibleBy dividend divisor)
+isDivisibleByNZ dividend Z       nz_prf = void (nz_prf Refl)
+isDivisibleByNZ dividend divisor nz_prf
+  = let multiplier = divNatNZ dividend divisor nz_prf in
+        case decEq dividend (multiplier * divisor) of
+             Yes prf   => rewrite prf in Just (mkDividesBy multiplier divisor)
+             No contra => Nothing
 
 isDivisibleBy : (dividend : Nat) -> (divisor : Nat) -> Maybe (IsDivisibleBy dividend divisor)
-isDivisibleBy dividend divisor = case decEq divisor Z of
+isDivisibleBy dividend divisor = case isZero divisor of
                          (Yes prf) => Nothing
                          (No contra) => isDivisibleByNZ dividend divisor contra
 
