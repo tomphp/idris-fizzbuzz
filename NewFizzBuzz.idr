@@ -1,32 +1,26 @@
 data IsDivisibleBy : (dividend : Nat) -> (divisor : Nat) -> Type where
-  Zero : (divisor : Nat) -> IsDivisibleBy 0 divisor
-  MultipleOf : (IsDivisibleBy dividend divisor) -> IsDivisibleBy (dividend + divisor) divisor
+  MkIsDivisibleBy : (dividend : Nat)
+         -> (divisor : Nat)
+         -> (prf : (modNat dividend divisor = 0))
+         -> IsDivisibleBy dividend divisor
 
-mkDividesBy : (multiplier : Nat) -> (divisor : Nat) -> IsDivisibleBy (multiplier * divisor) divisor
-mkDividesBy Z                 divisor = Zero divisor
-mkDividesBy (S newMultiplier) divisor = rewrite plusCommutative divisor (newMultiplier * divisor) in
-                                               MultipleOf (mkDividesBy newMultiplier divisor)
-NotZero : Nat -> Type
-NotZero k = Not (k = 0)
+isNotAMultiple : (contra : (modNat dividend divisor = 0) -> Void) -> IsDivisibleBy dividend divisor -> Void
+isNotAMultiple contra (MkIsDivisibleBy dividend divisor prf) = contra prf
 
-isZero : (k : Nat) -> Dec (k = Z)
-isZero k = decEq k Z
+isDivisibleBy : (dividend : Nat) -> (divisor : Nat) -> Dec (IsDivisibleBy dividend divisor)
+isDivisibleBy dividend divisor 
+  = (case decEq (modNat dividend divisor) Z of
+              (Yes prf) => Yes (MkIsDivisibleBy dividend divisor prf)
+              (No contra) => No (isNotAMultiple contra))
 
-isDivisibleByNZ : (dividend : Nat) -> (divisor : Nat) -> (nz_prf : NotZero divisor) -> Maybe (IsDivisibleBy dividend divisor)
-isDivisibleByNZ dividend Z       nz_prf = void (nz_prf Refl)
-isDivisibleByNZ dividend divisor nz_prf
-  = let multiplier = divNatNZ dividend divisor nz_prf in
-        case decEq dividend (multiplier * divisor) of
-             Yes prf   => rewrite prf in Just (mkDividesBy multiplier divisor)
-             No contra => Nothing
+-- NotZero : Nat -> Type
+-- NotZero k = Not (k = 0)
 
-isDivisibleBy : (dividend : Nat) -> (divisor : Nat) -> Maybe (IsDivisibleBy dividend divisor)
-isDivisibleBy dividend divisor = case isZero divisor of
-                         (Yes prf) => Nothing
-                         (No contra) => isDivisibleByNZ dividend divisor contra
+-- isZero : (k : Nat) -> Dec (k = Z)
+-- isZero k = decEq k Z
 
 data Fizzy : (k : Nat) -> Type where
-  TheFizz : (k : Nat) -> (prf : 3 = k) -> Fizzy k
+  TheFizz : (k : Nat) -> (prf : k `IsDivisibleBy` 3) -> Fizzy k
 
 data Buzzy : (k : Nat) -> Type where
   TheBuzz : (k : Nat) -> (prf : 5 = k) -> Buzzy k
@@ -40,11 +34,11 @@ data FizzBuzzT : (k : Nat) -> Type where
   FizzBuzz : (FizzBuzzy k) -> FizzBuzzT k
   Number : (k : Nat) -> FizzBuzzT k
 
-fizzNotPossible : (contra : (3 = k) -> Void) -> Fizzy k -> Void
+fizzNotPossible : (contra : (k `IsDivisibleBy` 3) -> Void) -> Fizzy k -> Void
 fizzNotPossible contra (TheFizz k prf) = contra prf
 
 isFizz : (k : Nat) -> Dec (Fizzy k)
-isFizz k = case decEq 3 k of
+isFizz k = case (k `isDivisibleBy` 3) of
                 (Yes prf) => Yes (TheFizz k prf)
                 (No contra) => No (fizzNotPossible contra) 
 
