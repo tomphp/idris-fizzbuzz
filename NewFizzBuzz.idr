@@ -13,65 +13,33 @@ isDivisibleBy dividend divisor
               (Yes prf) => Yes (MkIsDivisibleBy dividend divisor prf)
               (No contra) => No (isNotAMultiple contra))
 
--- NotZero : Nat -> Type
--- NotZero k = Not (k = 0)
+IsFizz : Nat -> Type
+IsFizz k = k `IsDivisibleBy` 3
 
--- isZero : (k : Nat) -> Dec (k = Z)
--- isZero k = decEq k Z
-
-data Fizzy : (k : Nat) -> Type where
-  TheFizz : (k : Nat) -> (prf : k `IsDivisibleBy` 3) -> Fizzy k
-
-data Buzzy : (k : Nat) -> Type where
-  TheBuzz : (k : Nat) -> (prf : 5 = k) -> Buzzy k
-
-data FizzBuzzy : Nat -> Type where
-  TheFizzBuzz : (k : Nat) -> (15 = k) -> FizzBuzzy k
+IsBuzz : Nat -> Type
+IsBuzz k = k `IsDivisibleBy` 5
 
 data FizzBuzzT : (k : Nat) -> Type where
-  Fizz : (Fizzy k) -> FizzBuzzT k
-  Buzz : (Buzzy k) -> FizzBuzzT k
-  FizzBuzz : (FizzBuzzy k) -> FizzBuzzT k
-  Number : (k : Nat) -> FizzBuzzT k
+  Fizz : (k : Nat) -> IsFizz k -> Not (IsBuzz k) -> FizzBuzzT k
+  Buzz : (k : Nat) -> Not (IsFizz k) -> IsBuzz k -> FizzBuzzT k
+  FizzBuzz : (k : Nat) -> IsFizz k -> IsBuzz k -> FizzBuzzT k
+  Number : (k : Nat) -> Not (IsFizz k) -> Not (IsBuzz k) -> FizzBuzzT k
 
-fizzNotPossible : (contra : (k `IsDivisibleBy` 3) -> Void) -> Fizzy k -> Void
-fizzNotPossible contra (TheFizz k prf) = contra prf
+fizzBuzz : (k : Nat) -> FizzBuzzT k
+fizzBuzz k
+  = case k `isDivisibleBy` 3 of
+         Yes isFizz
+           => case k `isDivisibleBy` 5 of
+                   Yes isBuzz => FizzBuzz k isFizz isBuzz
+                   No isNotBuzz => Fizz k isFizz isNotBuzz
+         No isNotFizz
+           => case k `isDivisibleBy` 5 of
+                   Yes isBuzz => Buzz k isNotFizz isBuzz
+                   No isNotBuzz => Number k isNotFizz isNotBuzz
 
-isFizz : (k : Nat) -> Dec (Fizzy k)
-isFizz k = case (k `isDivisibleBy` 3) of
-                (Yes prf) => Yes (TheFizz k prf)
-                (No contra) => No (fizzNotPossible contra) 
-
-
-buzzNotPossible : (contra : (5 = k) -> Void) -> Buzzy k -> Void
-buzzNotPossible contra (TheBuzz k prf) = contra prf
-
-isBuzz : (k : Nat) -> Dec (Buzzy k)
-isBuzz k = case decEq 5 k of
-                (Yes prf) => Yes (TheBuzz k prf)
-                (No contra) => No (buzzNotPossible contra)
-
-fizzBuzzNotPossible : (contra : (fromInteger 15 = k) -> Void) -> FizzBuzzy k -> Void
-fizzBuzzNotPossible contra (TheFizzBuzz k prf) = contra prf
-
-isFizzBuzz : (k : Nat) -> Dec (FizzBuzzy k)
-isFizzBuzz k = case decEq 15 k of
-                    (Yes prf) => Yes (TheFizzBuzz k prf)
-                    (No contra) => No (fizzBuzzNotPossible contra)
-
-doFizzBuzz : (k : Nat) -> FizzBuzzT k
-doFizzBuzz k
-  = case isFizz k of
-         (Yes prf) => Fizz prf
-         (No contra) => case isBuzz k of
-                             (Yes prf) => Buzz prf
-                             (No contra) => (case isFizzBuzz k of
-                                                  (Yes prf) => FizzBuzz prf
-                                                  (No contra) => Number k)
-
-fizzBuzz : Nat -> String
-fizzBuzz k = case doFizzBuzz k of
-                  (Fizz x) => "fizz"
-                  (Buzz x) => "buzz"
-                  (FizzBuzz x) => "fizzbuzz"
-                  (Number k) => show k
+showFizzBuzz : Nat -> String
+showFizzBuzz k = case fizzBuzz k of
+                  (Fizz k _ _) => "fizz"
+                  (Buzz k _ _) => "buzz"
+                  (FizzBuzz k _ _) => "fizzbuzz"
+                  (Number k _ _) => show k
